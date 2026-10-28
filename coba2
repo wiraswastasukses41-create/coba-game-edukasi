@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petualangan UI - 1v1 Split Screen</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+  
+  body {
+    min-height: 100vh;
+    background: #1a1a2e;
+    overflow-x: hidden;
+    color: #fff;
+  }
+
+  /* ========== HEADER ========== */
+  .game-header {
+    background: linear-gradient(90deg, #0f3460, #16213e, #0f3460);
+    padding: 12px 20px;
+    text-align: center;
+    border-bottom: 3px solid #e94560;
+    position: relative;
+    z-index: 10;
+  }
+  .game-header h1 {
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #e94560;
+  }
+  .game-header p { font-size: 12px; opacity: 0.8; margin-top: 3px; }
+
+  /* ========== SPLIT SCREEN ========== */
+  .split-container {
+    display: flex;
+    min-height: calc(100vh - 70px);
+  }
+  .team-side {
+    flex: 1;
+    position: relative;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    transition: filter 0.3s;
+    overflow: hidden;
+  }
+  .team-side.cooldown { filter: grayscale(0.7) brightness(0.6); pointer-events: none; }
+  .team-a { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border-right: 3px solid #fff; }
+  .team-b { background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%); }
+
+  /* ========== TEAM HEADER ========== */
+  .team-header {
+    background: rgba(0,0,0,0.35);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(5px);
+  }
+  .team-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team-a .team-name { color: #4fc3f7; }
+  .team-b .team-name { color: #ffcc80; }
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+    opacity: 0.9;
+  }
+  .progress-bar {
+    height: 14px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 7px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00e676, #76ff03);
+    width: 0%;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(0,230,118,0.6);
+  }
+
+  /* ========== ROOM / DOORS ========== */
+  .room {
+    flex: 1;
+    background: rgba(0,0,0,0.25);
+    border-radius: 15px;
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    align-content: center;
+    position: relative;
+    border: 2px dashed rgba(255,255,255,0.2);
+    min-height: 300px;
+  }
+  .room-label {
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: #16213e;
+    padding: 3px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  .door {
+    aspect-ratio: 3/4;
+    background: linear-gradient(145deg, #5d4037, #3e2723);
+    border-radius: 12px 12px 4px 4px;
+    border: 3px solid #2c1810;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 0 #1a0f0a, 0 10px 20px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .door::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    width: 10px;
+    height: 10px;
+    background: #ffd700;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 8px #ffd700;
+  }
+  .door:hover:not(.locked):not(.opened) {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 0 #1a0f0a, 0 15px 25px rgba(0,0,0,0.5);
+  }
+  .door-icon {
+    font-size: 40px;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+  .door-label {
+    font-size: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 2px 8px;
+    border-radius: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* Door states */
+  .door.locked {
+    background: linear-gradient(145deg, #424242, #212121);
+    cursor: not-allowed;
+  }
+  .door.locked::after {
+    content: '🔒';
+    position: absolute;
+    font-size: 30px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .door.opened {
+    background: linear-gradient(145deg, #2e7d32, #1b5e20);
+    animation: doorOpen 0.6s ease-out;
+  }
+  .door.opened::after {
+    content: '✓';
+    position: absolute;
+    font-size: 50px;
+    color: #fff;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-shadow: 0 0 10px #00e676;
+  }
+  @keyframes doorOpen {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1) rotateY(20deg); }
+    100% { transform: scale(1); }
+  }
+
+  /* Cooldown overlay on door */
+  .door-cooldown {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: #ff5252;
+    border-radius: 10px;
+    z-index: 5;
+  }
+
+  /* Team cooldown overlay */
+  .team-cooldown-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    border-radius: 15px;
+    animation: bombFlash 0.5s ease-out;
+  }
+  @keyframes bombFlash {
+    0% { background: rgba(255,87,34,0.9); }
+    100% { background: rgba(0,0,0,0.75); }
+  }
+  .team-cooldown-overlay .bomb-icon { font-size: 80px; animation: bombShake 0.5s ease-out; }
+  @keyframes bombShake {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-15deg) scale(1.2); }
+    75% { transform: rotate(15deg) scale(1.2); }
+  }
+  .team-cooldown-overlay .cd-text {
+    font-size: 16px;
+    margin-top: 10px;
+    letter-spacing: 2px;
+  }
+  .team-cooldown-overlay .cd-timer {
+    font-size: 60px;
+    font-weight: bold;
+    color: #ff5252;
+    text-shadow: 0 0 20px #ff5252;
+  }
+
+  /* Explosion effect */
+  .explosion {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 100px;
+    animation: explode 0.8s ease-out;
+    z-index: 15;
+    pointer-events: none;
+  }
+  @keyframes explode {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2) rotate(360deg); opacity: 0; }
+  }
+
+  /* ========== MODAL SOAL ========== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: linear-gradient(135deg, #fff, #f5f5f5);
+    border-radius: 20px;
+    padding: 25px;
+    max-width: 500px;
+    width: 100%;
+    color: #333;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-team-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .modal-team-badge.team-a { background: #2a5298; }
+  .modal-team-badge.team-b { background: #ef473a; }
+  .modal-question {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    line-height: 1.5;
+    color: #1a1a2e;
+  }
+  .modal-options { display: grid; gap: 10px; }
+  .modal-option {
+    padding: 12px 15px;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+    transition: all 0.2s;
+    color: #333;
+  }
+  .modal-option:hover:not(:disabled) {
+    border-color: #4a3f8f;
+    background: #f0f0ff;
+    transform: translateX(5px);
+  }
+  .modal-option:disabled { cursor: not-allowed; opacity: 0.7; }
+  .modal-option.correct { background: #d4edda; border-color: #28a745; color: #155724; font-weight: bold; }
+  .modal-option.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+
+  /* ========== WIN MODAL ========== */
+  .win-modal {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a2e;
+    text-align: center;
+    padding: 40px 25px;
+  }
+  .win-modal .trophy { font-size: 100px; animation: trophyBounce 1s infinite; }
+  @keyframes trophyBounce {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+  }
+  .win-modal h2 {
+    font-size: 36px;
+    margin: 15px 0;
+    text-shadow: 2px 2px 0 rgba(255,255,255,0.5);
+  }
+  .win-modal p { font-size: 16px; margin-bottom: 20px; }
+  .btn-restart {
+    padding: 12px 30px;
+    background: #1a1a2e;
+    color: #ffd700;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .btn-restart:hover { transform: scale(1.05); }
+
+  /* ========== START SCREEN ========== */
+  .start-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+  }
+  .start-content {
+    text-align: center;
+    max-width: 600px;
+  }
+  .start-content h1 {
+    font-size: 42px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #4fc3f7, #ffcc80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .start-content p { font-size: 15px; opacity: 0.9; margin-bottom: 25px; line-height: 1.6; }
+  .rules-box {
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    text-align: left;
+  }
+  .rules-box h3 { margin-bottom: 10px; color: #ffd700; }
+  .rules-box ul { list-style: none; }
+  .rules-box li { padding: 5px 0; font-size: 14px; }
+  .rules-box li::before { content: '⚡ '; }
+  .btn-start {
+    padding: 15px 50px;
+    background: linear-gradient(90deg, #e94560, #ff6b6b);
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 10px 30px rgba(233,69,96,0.4);
+    transition: transform 0.2s;
+  }
+  .btn-start:hover { transform: translateY(-3px); }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 700px) {
+    .split-container { flex-direction: column; }
+    .team-a { border-right: none; border-bottom: 3px solid #fff; }
+    .room { grid-template-columns: repeat(3, 1fr); min-height: 200px; }
+    .door-icon { font-size: 28px; }
+    .game-header h1 { font-size: 18px; }
+    .start-content h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== START SCREEN ========== -->
+<div class="start-screen" id="startScreen">
+  <div class="start-content">
+    <h1>🏰 PETUALANGAN UI</h1>
+    <p>Game Edukatif 1v1 Local Multiplayer<br>Materi: <strong>User Interface</strong> (Grafis, Typography, Warna, Audio, Video, Interaksi)</p>
+    <div class="rules-box">
+      <h3>📜 Aturan Permainan</h3>
+      <ul>
+        <li>Dua tim berlomba membuka <strong>10 pintu</strong> terlebih dahulu</li>
+        <li>Klik pintu untuk membuka soal — jawaban <strong>BENAR</strong> = pintu terbuka</li>
+        <li>Jawaban <strong>SALAH</strong> = pintu terkunci 20 detik</li>
+        <li>Hati-hati <strong>PINTU BOM 💣</strong>! Kena jebakan = cooldown 10 detik</li>
+        <li>Tim pertama mencapai 10 pintu = <strong>MENANG!</strong></li>
+      </ul>
+    </div>
+    <button class="btn-start" onclick="startGame()">MULAI PETUALANGAN ▶</button>
+  </div>
+</div>
+
+<!-- ========== HEADER ========== -->
+<div class="game-header">
+  <h1>🏰 PETUALANGAN UI — 1v1</h1>
+  <p>Tim pertama yang membuka 10 pintu akan menang!</p>
+</div>
+
+<!-- ========== SPLIT SCREEN ========== -->
+<div class="split-container">
+  
+  <!-- TEAM A (KIRI) -->
+  <div class="team-side team-a" id="teamA">
+    <div class="team-header">
+      <div class="team-name">🦁 TIM A — SINGA</div>
+      <div class="progress-info">
+        <span>Pintu Terbuka</span>
+        <span id="scoreA">0 / 10</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressA"></div></div>
+    </div>
+    <div class="room" id="roomA">
+      <div class="room-label">🏛️ RUANGAN TIM A</div>
+      <!-- Pintu akan di-generate oleh JS -->
+    </div>
+  </div>
+
+  <!-- TEAM B (KANAN) -->
+  <div class="team-side team-b" id="teamB">
+    <div class="team-header">
+      <div class="team-name">🦅 TIM B — ELANG</div>
+      <div class="progress-info">
+        <span>Pintu Terbuka</span>
+        <span id="scoreB">0 / 10</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressB"></div></div>
+    </div>
+    <div class="room" id="roomB">
+      <div class="room-label">🏛️ RUANGAN TIM B</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== MODAL SOAL ========== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-team-badge" id="modalBadge">TIM A</div>
+    <div class="modal-question" id="modalQuestion">Soal akan muncul di sini...</div>
+    <div class="modal-options" id="modalOptions"></div>
+  </div>
+</div>
+
+<!-- ========== MODAL KEMENANGAN ========== -->
+<div class="modal-overlay" id="winOverlay">
+  <div class="modal win-modal">
+    <div class="trophy">🏆</div>
+    <h2 id="winTitle">TIM A MENANG!</h2>
+    <p id="winDesc">Selamat! Tim pertama yang berhasil membuka 10 pintu!</p>
+    <button class="btn-restart" onclick="restartGame()">🔄 MAIN LAGI</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   📚 BANK SOAL - EDIT DI SINI UNTUK MENAMBAH/MENGUBAH SOAL
+   Format: { q: "pertanyaan", options: [A,B,C,D], answer: index (0-3) }
+   ============================================================ */
+const bankSoal = [
+  // ===== GRAFIS =====
+  { q: "Gambar yang tersusun dari titik-titik pixel dan akan pecah saat diperbesar disebut?", options: ["Vektor", "Bitmap", "SVG", "Gradient"], answer: 1 },
+  { q: "Format gambar yang mendukung latar transparan adalah?", options: ["JPG", "PNG", "BMP", "TIFF"], answer: 1 },
+  { q: "Gambar berbasis rumus matematika yang tidak pecah saat diperbesar adalah?", options: ["Bitmap", "Raster", "Vektor", "Pixel"], answer: 2 },
+  { q: "Satuan resolusi gambar untuk tampilan layar adalah?", options: ["DPI", "PPI", "CMYK", "RGB"], answer: 1 },
+  { q: "Format gambar SVG biasanya digunakan untuk?", options: ["Foto realistis", "Ikon & logo", "Video", "Audio"], answer: 1 },
+
+  // ===== TYPOGRAPHY =====
+  { q: "Jenis font yang memiliki "kaki" kecil di ujung huruf disebut?", options: ["Sans Serif", "Serif", "Script", "Display"], answer: 1 },
+  { q: "Font tanpa kaki/seri, cocok untuk tampilan modern di layar, adalah?", options: ["Times New Roman", "Arial", "Garamond", "Georgia"], answer: 1 },
+  { q: "Jarak vertikal antar baris teks disebut?", options: ["Kerning", "Tracking", "Leading", "Margin"], answer: 2 },
+  { q: "Penyesuaian jarak antar dua huruf spesifik disebut?", options: ["Kerning", "Leading", "Align", "Wrap"], answer: 0 },
+  { q: "Hierarki visual dalam tipografi bertujuan untuk?", options: ["Mempercepat loading", "Mengarahkan perhatian pembaca", "Menghemat ruang", "Menambah warna"], answer: 1 },
+
+  // ===== WARNA =====
+  { q: "Model warna yang digunakan untuk tampilan layar digital adalah?", options: ["CMYK", "RGB", "Pantone", "HKS"], answer: 1 },
+  { q: "Model warna yang digunakan untuk percetakan adalah?", options: ["RGB", "HEX", "CMYK", "HSL"], answer: 2 },
+  { q: "Kode warna HEX #FF0000 merepresentasikan warna?", options: ["Biru", "Hijau", "Merah", "Kuning"], answer: 2 },
+  { q: "Warna yang berseberangan dalam color wheel disebut warna?", options: ["Analog", "Komplementer", "Monokrom", "Netral"], answer: 1 },
+  { q: "Psikologi warna biru umumnya diasosiasikan dengan?", options: ["Marah & bahaya", "Ketenangan & kepercayaan", "Lapar & energi", "Romansa"], answer: 1 },
+
+  // ===== AUDIO =====
+  { q: "Format audio yang lossless (tidak mengurangi kualitas) adalah?", options: ["MP3", "WAV", "AAC", "WMA"], answer: 1 },
+  { q: "Sampling rate audio CD standar adalah?", options: ["22.05 kHz", "44.1 kHz", "48 kHz", "96 kHz"], answer: 1 },
+  { q: "Bitrate audio yang lebih tinggi berarti?", options: ["Kualitas lebih rendah", "Ukuran file lebih kecil", "Kualitas lebih baik", "Durasi lebih pendek"], answer: 2 },
+  { q: "Format audio populer yang dikompresi dengan kehilangan sebagian data?", options: ["WAV", "FLAC", "MP3", "AIFF"], answer: 2 },
+
+  // ===== VIDEO =====
+  { q: "Jumlah frame yang ditampilkan per detik dalam video disebut?", options: ["Bitrate", "Resolution", "FPS", "Codec"], answer: 2 },
+  { q: "Resolusi Full HD memiliki ukuran?", options: ["1280x720", "1920x1080", "3840x2160", "720x480"], answer: 1 },
+  { q: "Format video yang paling umum digunakan di web adalah?", options: ["AVI", "MOV", "MP4", "WMV"], answer: 2 },
+  { q: "Resolusi 4K UHD memiliki ukuran?", options: ["1920x1080", "2560x1440", "3840x2160", "7680x4320"], answer: 2 },
+
+  // ===== INTERAKSI PENGGUNA =====
+  { q: "Respons visual saat kursor diarahkan ke tombol disebut?", options: ["Click state", "Hover state", "Focus state", "Active state"], answer: 1 },
+  { q: "Gesture usap jari di layar sentuh disebut?", options: ["Tap", "Pinch", "Swipe", "Long press"], answer: 2 },
+  { q: "Feedback yang diberikan sistem setelah pengguna melakukan aksi disebut?", options: ["Input", "Output", "Feedback", "Navigation"], answer: 2 },
+  { q: "Area yang dapat diklik pada tombol sebaiknya?", options: ["Sekecil mungkin", "Minimal 44x44 px", "Hanya teks", "Tanpa padding"], answer: 1 },
+  { q: "Prinsip 'Affordance' dalam UI berarti?", options: ["Desain harus mahal", "Elemen memberi petunjuk cara pakai", "Warna harus cerah", "Teks harus panjang"], answer: 1 },
+  { q: "Ikon yang umum digunakan untuk menu navigasi di mobile adalah?", options: ["Silang (X)", "Hamburger (☰)", "Centang (✓)", "Panah"], answer: 1 }
+];
+
+/* ============================================================
+   🎮 STATE PERMAINAN
+   ============================================================ */
+const MAX_SCORE = 10;
+const DOOR_COUNT = 3; // jumlah pintu aktif per ruangan
+const COOLDOWN_WRONG = 20; // detik, jawaban salah
+const COOLDOWN_BOMB = 10;  // detik, kena bom
+
+const state = {
+  A: { score: 0, cooldown: 0, doors: [], timerInterval: null },
+  B: { score: 0, cooldown: 0, doors: [], timerInterval: null }
+};
+
+let soalUsed = []; // track soal yang sudah muncul agar tidak berulang
+let currentModal = null; // { team, doorIndex }
+
+/* ============================================================
+   🚀 FUNGSI UTAMA
+   ============================================================ */
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  initRoom('A');
+  initRoom('B');
+}
+
+function restartGame() {
+  state.A.score = 0; state.A.cooldown = 0;
+  state.B.score = 0; state.B.cooldown = 0;
+  soalUsed = [];
+  document.getElementById('winOverlay').classList.remove('active');
+  updateScore('A'); updateScore('B');
+  initRoom('A'); initRoom('B');
+}
+
+function initRoom(team) {
+  const room = document.getElementById('room' + team);
+  // hapas semua pintu lama (sisakan label)
+  room.querySelectorAll('.door').forEach(d => d.remove());
+  state[team].doors = [];
+  for (let i = 0; i < DOOR_COUNT; i++) {
+    spawnDoor(team);
+  }
+}
+
+function spawnDoor(team) {
+  const room = document.getElementById('room' + team);
+  // 25% peluang bom
+  const isBomb = Math.random() < 0.25;
+  const doorData = {
+    type: isBomb ? 'bomb' : 'question',
+    locked: false,
+    opened: false,
+    cooldownTimer: null,
+    soalId: isBomb ? null : pickSoal()
+  };
+  const idx = state[team].doors.length;
+  state[team].doors.push(doorData);
+
+  const doorEl = document.createElement('div');
+  doorEl.className = 'door';
+  doorEl.dataset.team = team;
+  doorEl.dataset.idx = idx;
+  doorEl.innerHTML = `
+    <div class="door-icon">${isBomb ? '🚪' : '🚪'}</div>
+    <div class="door-label">${isBomb ? '???' : 'SOAL'}</div>
+  `;
+  doorEl.onclick = () => handleDoorClick(team, idx);
+  room.appendChild(doorEl);
+}
+
+function pickSoal() {
+  // ambil soal yang belum dipakai
+  const available = bankSoal.map((_, i) => i).filter(i => !soalUsed.includes(i));
+  if (available.length === 0) {
+    soalUsed = []; // reset jika habis
+    return Math.floor(Math.random() * bankSoal.length);
+  }
+  const pick = available[Math.floor(Math.random() * available.length)];
+  soalUsed.push(pick);
+  return pick;
+}
+
+function handleDoorClick(team, idx) {
+  if (state[team].cooldown > 0) return; // tim sedang cooldown
+  const door = state[team].doors[idx];
+  if (!door || door.locked || door.opened) return;
+
+  if (door.type === 'bomb') {
+    triggerBomb(team, idx);
+  } else {
+    openQuestionModal(team, idx);
+  }
+}
+
+/* ========== BOM ========== */
+function triggerBomb(team, idx) {
+  const room = document.getElementById('room' + team);
+  // animasi ledakan
+  const boom = document.createElement('div');
+  boom.className = 'explosion';
+  boom.textContent = '💥';
+  room.appendChild(boom);
+  setTimeout(() => boom.remove(), 800);
+
+  // buka pintu bom (hilang)
+  const doorEl = room.querySelectorAll('.door')[idx];
+  doorEl.classList.add('opened');
+  doorEl.style.background = 'linear-gradient(145deg, #424242, #212121)';
+  doorEl.innerHTML = '<div style="font-size:40px;">💣</div><div class="door-label">BOM!</div>';
+  doorEl.onclick = null;
+
+  // ganti pintu baru setelah cooldown
+  setTimeout(() => {
+    doorEl.remove();
+    state[team].doors[idx] = null;
+    spawnDoor(team);
+  }, 1000);
+
+  // cooldown seluruh tim
+  startTeamCooldown(team, COOLDOWN_BOMB);
+}
+
+function startTeamCooldown(team, seconds) {
+  state[team].cooldown = seconds;
+  const side = document.getElementById('team' + team);
+  side.classList.add('cooldown');
+
+  // overlay cooldown
+  const overlay = document.createElement('div');
+  overlay.className = 'team-cooldown-overlay';
+  overlay.id = 'cdOverlay' + team;
+  overlay.innerHTML = `
+    <div class="bomb-icon">💣</div>
+    <div class="cd-text">COOLDOWN</div>
+    <div class="cd-timer" id="cdTimer${team}">${seconds}</div>
+  `;
+  side.appendChild(overlay);
+
+  if (state[team].timerInterval) clearInterval(state[team].timerInterval);
+  state[team].timerInterval = setInterval(() => {
+    state[team].cooldown--;
+    const timerEl = document.getElementById('cdTimer' + team);
+    if (timerEl) timerEl.textContent = state[team].cooldown;
+    if (state[team].cooldown <= 0) {
+      clearInterval(state[team].timerInterval);
+      side.classList.remove('cooldown');
+      const ov = document.getElementById('cdOverlay' + team);
+      if (ov) ov.remove();
+    }
+  }, 1000);
+}
+
+/* ========== MODAL SOAL ========== */
+function openQuestionModal(team, idx) {
+  const door = state[team].doors[idx];
+  const soal = bankSoal[door.soalId];
+  currentModal = { team, idx };
+
+  const badge = document.getElementById('modalBadge');
+  badge.className = 'modal-team-badge team-' + team.toLowerCase();
+  badge.textContent = team === 'A' ? '🦁 TIM A' : '🦅 TIM B';
+  document.getElementById('modalQuestion').textContent = soal.q;
+
+  const optContainer = document.getElementById('modalOptions');
+  optContainer.innerHTML = '';
+  soal.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-option';
+    btn.textContent = `${String.fromCharCode(65 + i)}. ${opt}`;
+    btn.onclick = () => submitAnswer(i, btn);
+    optContainer.appendChild(btn);
+  });
+
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function submitAnswer(selectedIdx, btnEl) {
+  if (!currentModal) return;
+  const { team, idx } = currentModal;
+  const door = state[team].doors[idx];
+  const soal = bankSoal[door.soalId];
+  const allBtns = document.querySelectorAll('.modal-option');
+  allBtns.forEach(b => b.disabled = true);
+
+  if (selectedIdx === soal.answer) {
+    btnEl.classList.add('correct');
+    // pintu terbuka
+    setTimeout(() => {
+      closeQuestionModal();
+      openDoorSuccess(team, idx);
+    }, 900);
+  } else {
+    btnEl.classList.add('wrong');
+    allBtns[soal.answer].classList.add('correct');
+    setTimeout(() => {
+      closeQuestionModal();
+      lockDoor(team, idx);
+    }, 1200);
+  }
+}
+
+function closeQuestionModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  currentModal = null;
+}
+
+function openDoorSuccess(team, idx) {
+  const room = document.getElementById('room' + team);
+  const doorEl = room.querySelectorAll('.door')[idx];
+  doorEl.classList.add('opened');
+  doorEl.innerHTML = '<div class="door-icon">✨</div><div class="door-label">OPEN</div>';
+  doorEl.onclick = null;
+
+  state[team].score++;
+  updateScore(team);
+
+  // cek menang
+  if (state[team].score >= MAX_SCORE) {
+    setTimeout(() => showWin(team), 600);
+    return;
+  }
+
+  // ganti pintu baru
+  setTimeout(() => {
+    doorEl.remove();
+    state[team].doors[idx] = null;
+    spawnDoor(team);
+  }, 800);
+}
+
+function lockDoor(team, idx) {
+  const room = document.getElementById('room' + team);
+  const doorEl = room.querySelectorAll('.door')[idx];
+  doorEl.classList.add('locked');
+  state[team].doors[idx].locked = true;
+
+  // countdown overlay di pintu
+  let remaining = COOLDOWN_WRONG;
+  const cdDiv = document.createElement('div');
+  cdDiv.className = 'door-cooldown';
+  cdDiv.textContent = remaining;
+  doorEl.appendChild(cdDiv);
+
+  const iv = setInterval(() => {
+    remaining--;
+    cdDiv.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(iv);
+      cdDiv.remove();
+      doorEl.classList.remove('locked');
+      state[team].doors[idx].locked = false;
+    }
+  }, 1000);
+}
+
+function updateScore(team) {
+  document.getElementById('score' + team).textContent = `${state[team].score} / ${MAX_SCORE}`;
+  document.getElementById('progress' + team).style.width = `${(state[team].score / MAX_SCORE) * 100}%`;
+}
+
+function showWin(team) {
+  const name = team === 'A' ? '🦁 TIM A — SINGA' : '🦅 TIM B — ELANG';
+  document.getElementById('winTitle').textContent = `${name} MENANG!`;
+  document.getElementById('winDesc').textContent = `Selamat! ${name} berhasil membuka 10 pintu lebih dulu!`;
+  document.getElementById('winOverlay').classList.add('active');
+}
+</script>
+</body>
+</html>
