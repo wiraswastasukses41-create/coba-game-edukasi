@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarik Tambang - UI Figma</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+  .game-container {
+    width: 100%;
+    max-width: 900px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 30px;
+  }
+  h1 {
+    text-align: center;
+    color: #4a3f8f;
+    margin-bottom: 5px;
+    font-size: 28px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #777;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .arena {
+    position: relative;
+    height: 220px;
+    background: linear-gradient(to bottom, #87ceeb 0%, #87ceeb 60%, #90ee90 60%, #228b22 100%);
+    border-radius: 15px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border: 3px solid #4a3f8f;
+  }
+  .center-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 4px;
+    height: 100%;
+    background: repeating-linear-gradient(to bottom, #fff 0 10px, transparent 10px 20px);
+    transform: translateX(-50%);
+    z-index: 1;
+  }
+  .rope {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background: repeating-linear-gradient(45deg, #8b4513 0 10px, #a0522d 10px 20px);
+    border-radius: 7px;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
+  .rope-knot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle, #ff6b6b, #c92a2a);
+    border: 4px solid #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: left 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    z-index: 3;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .team {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    z-index: 4;
+    transition: transform 0.3s;
+  }
+  .team-left { left: 20px; }
+  .team-right { right: 20px; }
+  .team.pulling { animation: pull 0.4s ease-in-out; }
+  @keyframes pull {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(-15px); }
+  }
+  .team-right.pulling { animation: pullRight 0.4s ease-in-out; }
+  @keyframes pullRight {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(15px); }
+  }
+  .character {
+    font-size: 60px;
+    line-height: 1;
+    display: block;
+  }
+  .team-name {
+    background: #4a3f8f;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 5px;
+  }
+  .score-board {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 10px;
+  }
+  .score-box {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    color: #fff;
+    font-weight: bold;
+  }
+  .score-left { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+  .score-right { background: linear-gradient(135deg, #fa709a, #fee140); }
+  .score-box .label { font-size: 12px; opacity: 0.9; }
+  .score-box .value { font-size: 22px; margin-top: 3px; }
+  .question-box {
+    background: #f8f9ff;
+    border: 2px solid #e0e0ff;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 15px;
+  }
+  .question-num {
+    color: #4a3f8f;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .question-text {
+    color: #333;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    line-height: 1.4;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .option {
+    padding: 12px;
+    background: #fff;
+    border: 2px solid #d0d0e0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    text-align: left;
+    color: #333;
+  }
+  .option:hover:not(:disabled) {
+    border-color: #4a3f8f;
+    background: #f0f0ff;
+    transform: translateY(-2px);
+  }
+  .option:disabled { cursor: not-allowed; opacity: 0.7; }
+  .option.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+  .option.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+  .feedback {
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 10px;
+    font-weight: bold;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .feedback.correct { background: #d4edda; color: #155724; }
+  .feedback.wrong { background: #f8d7da; color: #721c24; }
+  .feedback.info { background: #fff3cd; color: #856404; }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: transform 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .result-screen {
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .result-icon { font-size: 80px; margin-bottom: 15px; }
+  .result-title { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+  .result-title.win { color: #28a745; }
+  .result-title.lose { color: #dc3545; }
+  .result-desc { color: #555; margin-bottom: 20px; line-height: 1.5; }
+  @media (max-width: 600px) {
+    .options { grid-template-columns: 1fr; }
+    .character { font-size: 45px; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="game-container">
+  <h1>🏆 Tarik Tambang UI Figma</h1>
+  <p class="subtitle">Kuis Interaktif untuk Siswa SMK Kelas 10</p>
+
+  <div class="arena">
+    <div class="center-line"></div>
+    <div class="rope"></div>
+    <div class="rope-knot" id="knot"></div>
+    <div class="team team-left" id="teamLeft">
+      <span class="character">🧑‍🎓</span>
+      <div class="team-name">SISWA</div>
+    </div>
+    <div class="team team-right" id="teamRight">
+      <span class="character">🤖</span>
+      <div class="team-name">KOMPUTER</div>
+    </div>
+  </div>
+
+  <div class="score-board">
+    <div class="score-box score-left">
+      <div class="label">Skor Siswa</div>
+      <div class="value" id="scoreLeft">0</div>
+    </div>
+    <div class="score-box score-right">
+      <div class="label">Skor Komputer</div>
+      <div class="value" id="scoreRight">0</div>
+    </div>
+  </div>
+
+  <div id="gameArea">
+    <div class="question-box">
+      <div class="question-num" id="qNum">Pertanyaan 1 dari 5</div>
+      <div class="question-text" id="qText">Memuat pertanyaan...</div>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="feedback info" id="feedback">Pilih jawaban yang paling tepat!</div>
+  </div>
+
+  <div id="resultArea" style="display:none;">
+    <div class="result-screen">
+      <div class="result-icon" id="resultIcon">🏆</div>
+      <div class="result-title" id="resultTitle">Selamat!</div>
+      <div class="result-desc" id="resultDesc">Kamu berhasil mengalahkan komputer!</div>
+      <button class="btn" onclick="restartGame()">🔄 Main Lagi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const questions = [
+    {
+      q: "Apa fungsi utama dari aplikasi Figma?",
+      options: [
+        "Mengedit video",
+        "Mendesain antarmuka (UI) dan pengalaman pengguna (UX)",
+        "Membuat program komputer",
+        "Mengelola database"
+      ],
+      answer: 1
+    },
+    {
+      q: "Fitur Figma yang memungkinkan kita membuat elemen desain yang dapat digunakan berulang kali disebut?",
+      options: [
+        "Frame",
+        "Layer",
+        "Component",
+        "Plugin"
+      ],
+      answer: 2
+    },
+    {
+      q: "Shortcut keyboard untuk membuat Rectangle (kotak) di Figma adalah?",
+      options: [
+        "T",
+        "O",
+        "L",
+        "R"
+      ],
+      answer: 3
+    },
+    {
+      q: "Apa nama fitur Figma untuk menyimpan warna, tipografi, dan efek agar konsisten di seluruh desain?",
+      options: [
+        "Styles",
+        "Grid",
+        "Export",
+        "Prototype"
+      ],
+      answer: 0
+    },
+    {
+      q: "Mode Figma yang digunakan untuk menghubungkan antar halaman desain menjadi simulasi interaktif adalah?",
+      options: [
+        "Design Mode",
+        "Prototype Mode",
+        "Dev Mode",
+        "Code Mode"
+      ],
+      answer: 1
+    }
+  ];
+
+  let currentQ = 0;
+  let scoreLeft = 0;
+  let scoreRight = 0;
+  let knotPosition = 50; // persen dari kiri
+
+  const knotEl = document.getElementById('knot');
+  const teamLeft = document.getElementById('teamLeft');
+  const teamRight = document.getElementById('teamRight');
+
+  function loadQuestion() {
+    const q = questions[currentQ];
+    document.getElementById('qNum').textContent = `Pertanyaan ${currentQ + 1} dari ${questions.length}`;
+    document.getElementById('qText').textContent = q.q;
+    const optContainer = document.getElementById('options');
+    optContainer.innerHTML = '';
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.textContent = `${String.fromCharCode(65 + i)}. ${opt}`;
+      btn.onclick = () => selectAnswer(i, btn);
+      optContainer.appendChild(btn);
+    });
+    document.getElementById('feedback').className = 'feedback info';
+    document.getElementById('feedback').textContent = 'Pilih jawaban yang paling tepat!';
+  }
+
+  function selectAnswer(idx, btn) {
+    const q = questions[currentQ];
+    const allBtns = document.querySelectorAll('.option');
+    allBtns.forEach(b => b.disabled = true);
+    const fb = document.getElementById('feedback');
+
+    if (idx === q.answer) {
+      btn.classList.add('correct');
+      scoreLeft++;
+      knotPosition = Math.max(10, knotPosition - 10);
+      fb.className = 'feedback correct';
+      fb.textContent = '✅ Benar! Tali bergerak ke arahmu!';
+      teamLeft.classList.add('pulling');
+      setTimeout(() => teamLeft.classList.remove('pulling'), 400);
+    } else {
+      btn.classList.add('wrong');
+      allBtns[q.answer].classList.add('correct');
+      scoreRight++;
+      knotPosition = Math.min(90, knotPosition + 10);
+      fb.className = 'feedback wrong';
+      fb.textContent = '❌ Salah! Tali bergerak ke arah komputer!';
+      teamRight.classList.add('pulling');
+      setTimeout(() => teamRight.classList.remove('pulling'), 400);
+    }
+
+    knotEl.style.left = knotPosition + '%';
+    document.getElementById('scoreLeft').textContent = scoreLeft;
+    document.getElementById('scoreRight').textContent = scoreRight;
+
+    setTimeout(() => {
+      currentQ++;
+      if (currentQ < questions.length) {
+        loadQuestion();
+      } else {
+        showResult();
+      }
+    }, 1800);
+  }
+
+  function showResult() {
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('resultArea').style.display = 'block';
+    const icon = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const desc = document.getElementById('resultDesc');
+
+    if (scoreLeft === 5) {
+      icon.textContent = '🏆';
+      title.textContent = 'KAMU MENANG!';
+      title.className = 'result-title win';
+      desc.textContent = `Luar biasa! Kamu menjawab semua pertanyaan dengan benar. Tali sepenuhnya di pihakmu! Skor akhir: ${scoreLeft} - ${scoreRight}`;
+    } else if (scoreLeft > scoreRight) {
+      icon.textContent = '🎉';
+      title.textContent = 'KAMU MENANG!';
+      title.className = 'result-title win';
+      desc.textContent = `Hebat! Kamu berhasil mengalahkan komputer. Skor akhir: ${scoreLeft} - ${scoreRight}`;
+    } else if (scoreLeft < scoreRight) {
+      icon.textContent = '😢';
+      title.textContent = 'KOMPUTER MENANG!';
+      title.className = 'result-title lose';
+      desc.textContent = `Jangan menyerah! Pelajari lagi materi UI Figma. Skor akhir: ${scoreLeft} - ${scoreRight}`;
+    } else {
+      icon.textContent = '🤝';
+      title.textContent = 'SERI!';
+      title.className = 'result-title';
+      title.style.color = '#4a3f8f';
+      desc.textContent = `Pertandingan berakhir imbang. Skor akhir: ${scoreLeft} - ${scoreRight}`;
+    }
+  }
+
+  function restartGame() {
+    currentQ = 0;
+    scoreLeft = 0;
+    scoreRight = 0;
+    knotPosition = 50;
+    knotEl.style.left = '50%';
+    document.getElementById('scoreLeft').textContent = '0';
+    document.getElementById('scoreRight').textContent = '0';
+    document.getElementById('gameArea').style.display = 'block';
+    document.getElementById('resultArea').style.display = 'none';
+    loadQuestion();
+  }
+
+  loadQuestion();
+</script>
+</body>
+</html>
